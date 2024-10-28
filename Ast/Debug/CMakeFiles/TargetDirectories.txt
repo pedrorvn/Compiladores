@@ -1,0 +1,3 @@
+/mnt/c/Users/pedro/OneDrive/Documentos/Compiladores/Ast/Debug/CMakeFiles/tradutor.dir
+/mnt/c/Users/pedro/OneDrive/Documentos/Compiladores/Ast/Debug/CMakeFiles/edit_cache.dir
+/mnt/c/Users/pedro/OneDrive/Documentos/Compiladores/Ast/Debug/CMakeFiles/rebuild_cache.dir
