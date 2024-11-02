@@ -1,48 +1,43 @@
+#ifndef COMPILER_LEXER
+#define COMPILER_LEXER
+
 #include <unordered_map>
 #include <string>
+#include <sstream>
+using std::stringstream;
 using std::unordered_map;
 using std::string;
 
-// cada token deve possuir uma tag (número a partir de 256)
-// a tag dos caracteres individuais é seu código ASCII
-enum Tag { NUM = 256, ID, TRUE, FALSE };
+// cada token possui uma tag (número a partir de 256)
+// a tag de caracteres individuais é seu código ASCII
+enum Tag { ID = 256, INTEGER, REAL, TYPE, TRUE, FALSE, MAIN, IF, WHILE, DO, OR, AND, EQ, NEQ, LTE, GTE };
 
-// classes para representar tokens
+// classe para representar tokens
 struct Token
 {
 	int tag;
-	Token(int t) : tag(t) {}
-};
+	string lexeme;
 
-struct Num : public Token
-{
-	int value;
-	Num(int v) : Token(Tag::NUM), value(v) {}
+	Token() : tag(0) {}
+	Token(char ch) : tag(int(ch)), lexeme({ch}) {}
+	Token(int t, string s) : tag(t), lexeme(s) {}
 };
-
-struct Id : public Token
-{
-	string name;
-	Id(): Token(0) {}
-	Id(int t, string s) : Token(t), name(s) {}
-};
-
 
 // analisador léxico
 class Lexer
 {
 private:
-	int  line = 1;
-	char peek = ' ';
-	unordered_map<string, Id> id_table;
+	char peek;			// último caractere lido
+	Token token;		// último token retornado
+	int line = 1;		// número da linha atual
 
-	// Declarações das funções de ignorar comentários
-    void skipLineComment();
-    void skipBlockComment();
+	// tabela para identificadores e palavras-chave
+	unordered_map<string, Token> token_table;
 
 public:
-	Lexer();
-	
-	Token Scan();
-	void Start();
+	Lexer();			// construtor
+	int Lineno();		// retorna linha atual
+	Token * Scan();		// retorna próximo token da entrada
 };
+
+#endif

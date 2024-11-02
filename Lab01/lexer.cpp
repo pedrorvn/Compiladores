@@ -1,142 +1,267 @@
 #include "lexer.h"
-#include <iostream>
+#include <fstream>
 #include <sstream>
-using std::cin;
-using std::cout;
 using std::stringstream;
+
+extern std::ifstream fin;
 
 // construtor 
 Lexer::Lexer()
 {
-    // insere as palavras-reservadas na tabela de id's
-	id_table["true"] = Id{ Tag::TRUE, "true" };
-	id_table["false"] = Id{ Tag::FALSE, "false" };
+	// insere palavras-reservadas na tabela
+	token_table["main"]  = Token{ Tag::MAIN, "main" };
+	token_table["int"]   = Token{ Tag::TYPE, "int" };
+	token_table["float"] = Token{ Tag::TYPE, "float" };
+	token_table["bool"] = Token{ Tag::TYPE, "bool" };
+	token_table["true"]  = Token{ Tag::TRUE, "true" };
+	token_table["false"] = Token{ Tag::FALSE, "false" };
+	token_table["if"]    = Token{ Tag::IF,    "if" };
+	token_table["while"] = Token{ Tag::WHILE, "while" };
+	token_table["do"]    = Token{ Tag::DO,    "do" };
+	
+	// inicia leitura da entrada
+	peek = fin.get();
 }
 
-void Lexer::skipLineComment() {
-    while (peek != '\n' && peek != EOF) {
-        peek = cin.get();
-    }
-}
-
-void Lexer::skipBlockComment() {
-    while (true) {
-        peek = cin.get();
-        if (peek == EOF) return; // Para evitar loop infinito
-        if (peek == '*') {
-            peek = cin.get();
-            if (peek == '/') return; // Final do comentário de bloco
-        }
-    }
+// retorna número da linha atual
+int Lexer::Lineno()
+{
+	return line;
 }
 
 // retorna tokens para o analisador sintático
-Token Lexer::Scan()
+Token * Lexer::Scan()
 {
-	// salta espaços em branco, tabulações e novas linhas
+	// ignora espaços em branco, tabulações e novas linhas
 	while (isspace(peek))
 	{
 		if (peek == '\n')
 			line += 1;
-		peek = cin.get();
+		peek = fin.get();
 	}
 
-	// Ignora comentários de linha
-	if (peek == '/') {
-		char next_char = cin.get(); // Lê o próximo caractere sem perder 'peek'
-		//peek = cin.get();
-		if (next_char == '/') {
-			skipLineComment(); // Ignora até o final da linha
-			return Scan(); // Chama novamente para processar a próxima parte
-		} else if (next_char == '*') {
-			skipBlockComment(); // Ignora até encontrar */
-			peek = cin.get();   // Avança após o comentário de bloco
-			return Scan(); // Chama novamente para processar a próxima parte
-		} else {
-			// Caso seja um caractere '/' isolado
-			Token t {'/'};
-			peek = next_char;
-			cout << "<" << char(t.tag) << "> ";
-			return t;
+	// ignora comentários
+	while (peek == '/')
+	{
+		peek = fin.get();
+		if (peek == '/')
+		{
+			// ignora caracteres até o fim da linha
+			do
+				peek = fin.get();
+			while(peek != '\n');
+			line += 1;
+			peek = fin.get();
+		}
+		else if (peek == '*')
+		{
+			// ignora caracteres até achar */ ou EOF				
+			while( (peek=fin.get()) != '*' ||  (peek=fin.get()) != '/' )
+			{
+				if (peek == '\n')
+				{
+					line += 1;
+				}
+				else if (peek == EOF)
+				{
+					token = Token {EOF};
+					return &token;
+				}
+			}
+			peek = fin.get();	
+		}
+		else
+		{
+			// barra encontrada não inicia um comentário
+			fin.unget();
+			peek = '/';
+			break;
+		}
+
+		// remove espaços em branco, tabulações e novas linhas
+		while (isspace(peek))
+		{
+			if (peek == '\n')
+				line += 1;
+			peek = fin.get();
 		}
 	}
 
 	// retorna números
 	if (isdigit(peek))
 	{
-		int v = 0;
+		// ponto-flutuante não foi encontrado
+		bool dot = false;
 		
+		// acumula dígitos do número
+		stringstream ss;
 		do 
 		{
-			// converte caractere 'n' para o dígito numérico n
-			int n = peek - '0';
-			v = 10 * v + n;
-			peek = cin.get();
+			if (peek == '.')
+			{
+				if (dot == false)
+				{
+					// primeiro ponto encontrado
+					dot = true;
+				}
+				else
+				{
+					// segundo ponto encontrado
+					break; 
+				}
+			}
+
+			ss << peek;
+			peek = fin.get();
 		} 
-		while (isdigit(peek));
+		while (isdigit(peek) || peek == '.');
 
-		// DEBUG: exibe o token reconhecido
-		cout << "<NUM," <<  v <<"> ";
-
-		// retorna o token NUM
-		return Num{v};
+		// se o número é um ponto-flutuante
+		if (dot)
+		{
+			token = Token{Tag::REAL, ss.str()};
+			return &token;
+		}
+		else
+		{
+			token = Token{Tag::INTEGER, ss.str()};
+			return &token;
+		}
 	}
 
 	// retorna palavras-chave e identificadores
 	if (isalpha(peek))
 	{
 		stringstream ss;
-
 		do 
 		{
 			ss << peek;
-			peek = cin.get();
+			peek = fin.get();
 		} 
 		while (isalpha(peek));
 
 		string s = ss.str();
-		auto pos = id_table.find(s);
+		auto pos = token_table.find(s);
 
 		// se o lexema já está na tabela
-		if (pos != id_table.end())
+		if (pos != token_table.end())
 		{
-			// DEBUG: exibe o token reconhecido
-			switch (pos->second.tag)
-			{
-			case TRUE: cout << "<" << "TRUE" << "," << pos->second.name << "> "; break;
-			case FALSE: cout << "<" << "FALSE" << "," << pos->second.name << "> "; break;
-			default: cout << "<" << "ID" << "," << pos->second.name << "> "; break;
-			}
-			
-			// retorna o token ID
-			return pos->second;
+			// retorna o token da tabela
+			token = pos->second;
+			return &token;
 		}
 
 		// se o lexema ainda não está na tabela
-		Id new_id {Tag::ID, s};
-		id_table[s] = new_id;
-
-		// DEBUG: exibe o token reconhecido
-		cout << "<" << "ID" << "," << new_id.name << "> ";
+		Token t {Tag::ID, s};
+		token_table[s] = t;
 
 		// retorna o token ID
-		return new_id;
+		token = t;
+		return &token;
 	}
 
-	// operadores (e caracteres não alphanuméricos isolados)
-	Token t {peek};
+	// retorna operadores com mais de um caractere: >=, <=, == e !=
+	switch(peek)
+	{
+		case '&':
+		{
+			char next = fin.get();
+			if (next == '&')
+			{
+				peek = fin.get();
+				token = Token{Tag::AND, "&&"};
+				return &token;
+			}
+			else
+			{
+				fin.unget();
+			}
+		}
+		break;
+
+		case '|':
+		{
+			char next = fin.get();
+			if (next == '|')
+			{
+				peek = fin.get();
+				token = Token{Tag::OR, "||"};
+				return &token;
+			}
+			else
+			{
+				fin.unget();
+			}
+		}
+		break;
+
+		case '>':
+		{
+			char next = fin.get();
+			if (next == '=')
+			{
+				peek = fin.get();
+				token = Token{Tag::GTE, ">="};
+				return &token;
+			}
+			else
+			{
+				fin.unget();
+			}
+		}
+		break;
+
+		case '<':
+		{
+			char next = fin.get();
+			if (next == '=')
+			{
+				peek = fin.get();
+				token = Token{Tag::LTE, "<="};
+				return &token;
+			}
+			else
+			{
+				fin.unget();
+			}
+		}
+		break;
+
+		case '=':
+		{
+			char next = fin.get();
+			if (next == '=')
+			{
+				peek = fin.get();
+				token = Token{Tag::EQ, "=="};
+				return &token;
+			}
+			else
+			{
+				fin.unget();
+			}
+		}
+		break;
+
+		case '!':
+		{
+			char next = fin.get();
+			if (next == '=')
+			{
+				peek = fin.get();
+				token = Token{Tag::NEQ, "!="};
+				return &token;	
+			}
+			else
+			{
+				fin.unget();
+			}
+		}
+		break;
+	}
+
+	// retorna caracteres não alphanuméricos isolados: (, ), +, -, etc.
+	token = Token{peek};
 	peek = ' ';
-
-	// DEBUG: exibe o token para o caractere
-	cout << "<" << char(t.tag) << "> ";
-
-	// retorna o token para o caractere isolado
-	return t;
-}
-
-void Lexer::Start()
-{
-	// simula o analisador sintático pedindo tokens para o analisador léxico
-	while (peek != '\n')
-		Scan();
+	return &token;
 }

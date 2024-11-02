@@ -1,73 +1,30 @@
-# Analisador Léxico com comentários
 
-Este projeto implementa uma versão de um analisador léxico simples que reconhece tokens de um código fonte, incluindo números, palavras-chave e identificadores. O objetivo desse laboratório é de fazer modificações para permitir que o analisador ignore comentários de linha e comentários de bloco.
+# Lab01 - Modificações no AST para Suporte a Conversão de Inteiros para Booleanos
+
+Este README documenta as alterações recentes feitas no código para permitir a conversão automática de expressões inteiras (`int`) para expressões booleanas (`bool`) em construções lógicas e de controle de fluxo, como `if`, `while` e `dowhile`.
 
 ## Origem do Código Fonte
 
-O código fonte original deste projeto foi inspirado em material didático sobre análise léxica e sintática. As implementações de métodos e a estrutura geral foram adaptadas para incluir melhorias e funcionalidades adicionais, como o tratamento de comentários.
+O [código fonte original](https://github.com/JudsonSS/Compiladores/tree/master/Labs/Lab10) deste projeto foi inspirado em material didático sobre análise semântica. As implementações de métodos e a estrutura geral foram adaptadas para incluir melhorias e funcionalidades adicionais, como o tratamento de comentários.
 
-## Funcionalidades
+## Descrição Geral
 
-- **Reconhecimento de Tokens**: O analisador reconhece números, palavras-chave (`true`, `false`) e identificadores.
-- **Ignorar Comentários**: Agora, o analisador ignora:
-  - Comentários de linha (iniciados por `//`)
-  - Comentários de bloco (iniciados por `/*` e terminados por `*/`)
+O objetivo dessas modificações é facilitar o uso de expressões inteiras em contextos booleanos, onde valores `int` são tratados como `bool` de acordo com a convenção comum: `0` representa `false`, e qualquer outro valor inteiro representa `true`.
 
-## Modificações Realizadas
+## Alterações no Código
 
-### 1. Ignorar Comentários de Linha
+As mudanças a seguir foram feitas para suportar a conversão implícita de `int` para `bool`:
 
-A função `skipLineComment` foi adicionada para ignorar todos os caracteres até o final da linha quando um comentário de linha é detectado:
+### 1. Classe `Logical`
 
-```cpp
-void Lexer::skipLineComment() {
-    while (peek != '\n' && peek != EOF) {
-        peek = cin.get();
-    }
-}
-```
-
-### 2. Ignorar Comentários de Bloco
-
-A função `skipBlockComment` foi criada para lidar com comentários de bloco, que podem se estender por várias linhas:
+Na classe `Logical`, responsável pela avaliação de expressões lógicas binárias, foi adicionada uma verificação dos tipos de `expr1` e `expr2`. Agora, se uma dessas expressões for `int`, ela é convertida para `bool`, utilizando o valor `0` como `false` e qualquer outro valor como `true`. Um novo `Token` é criado para representar a expressão convertida, e o tipo é atualizado para `ExprType::BOOL`.
 
 ```cpp
-void Lexer::skipBlockComment() {
-    while (true) {
-        peek = cin.get();
-        if (peek == EOF) return; // Para evitar loop infinito
-        if (peek == '*') {
-            peek = cin.get();
-            if (peek == '/') return; // Final do comentário de bloco
-        }
-    }
+if (expr1->type == ExprType::INT) {
+    int int_value1 = std::stoi(expr1->Name());
+    bool bool_value1 = (int_value1 != 0);
+    Token *bool_token1 = new Token(*expr1->token);
+    bool_token1->lexeme = bool_value1 ? "true" : "false";
+    expr1 = new Expression(NodeType::LOG, ExprType::BOOL, bool_token1);
 }
 ```
-
-### 3. Modificações na Função `Scan`
-
-A função `Scan` foi modificada para incluir a lógica de ignorar comentários. Quando um `/` é encontrado, o analisador verifica se é o início de um comentário de linha ou de bloco:
-
-```cpp
-if (peek == '/') {
-    char next_char = cin.get(); // Lê o próximo caractere sem perder 'peek'
-    if (next_char == '/') {
-        skipLineComment(); // Ignora até o final da linha
-        return Scan(); // Chama novamente para processar a próxima parte
-    } else if (next_char == '*') {
-        skipBlockComment(); // Ignora até encontrar */
-        peek = cin.get();   // Avança após o comentário de bloco
-        return Scan(); // Chama novamente para processar a próxima parte
-    } else {
-        // Caso seja um caractere '/' isolado
-        Token t {'/'};
-        peek = next_char;
-        cout << "<" << char(t.tag) << "> ";
-        return t;
-    }
-}
-```
-
-# Desenvolvedor
-
-- [Pedro Rêgo Vilar Neto](https://github.com/pedrorvn)
