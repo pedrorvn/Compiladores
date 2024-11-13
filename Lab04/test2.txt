@@ -1,0 +1,5 @@
+if valor_1 == 2.5E+30 then
+     while valor_2 != 100
+          _Hello
+else
+     "Uma string com aspas: \" e contrabarra: \\"
