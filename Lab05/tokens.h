@@ -1,0 +1,5 @@
+// constantes para os tokens 
+enum Tag { ID = 256, INTEGER, FLOATING, STRING, TYPE, TRUE, FALSE, MAIN, IF, THEN, ELSE, NUM, 
+            WHILE, DO, OR, AND, EQ, ASG, NEQ, LTE, GTE, LT, LE, NE, GT,
+            BOOLEAN,  LBRACE, RBRACE, LPAREN, RPAREN, LBRACKET, RBRACKET, SEMICOLON,
+            PLUS, MINUS, MULT, DIV, EXCL};
